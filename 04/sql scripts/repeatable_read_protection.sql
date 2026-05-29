@@ -7,6 +7,7 @@ SELECT Balance FROM Accounts WHERE AccountID = 1;
 
 WAITFOR DELAY '00:00:30';
 
+-- Returns the exact same value. Session B was prevented from updating.
 SELECT Balance FROM Accounts WHERE AccountID = 1; 
 
 COMMIT TRAN;
@@ -15,6 +16,7 @@ COMMIT TRAN;
 
 BEGIN TRAN;
 
+-- This update statement will block until Session A commits, successfully preventing the non-repeatable read.
 UPDATE Accounts SET Balance = 300 WHERE AccountID = 1;
 
 COMMIT TRAN;

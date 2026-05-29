@@ -7,6 +7,7 @@ SELECT Balance FROM Accounts WHERE AccountID = 1;
 
 WAITFOR DELAY '00:00:30';
 
+-- The value changed during the same transaction (Non-repeatable Read)
 SELECT Balance FROM Accounts WHERE AccountID = 1; 
 
 COMMIT TRAN;
