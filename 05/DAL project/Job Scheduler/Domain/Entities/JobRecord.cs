@@ -8,6 +8,8 @@ public class JobRecord
     public required string CronExpression { get; set; }
     public string? Payload { get; set; }
     public JobStatus Status { get; set; } = JobStatus.Active;
+    public bool IsRecurrent { get; set; }
+    public required DateTimeOffset ScheduledTime { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<JobExecution> Executions { get; set; } = [];

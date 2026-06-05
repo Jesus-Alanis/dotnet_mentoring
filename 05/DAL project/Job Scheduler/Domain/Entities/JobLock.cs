@@ -2,12 +2,12 @@
 
 public class JobLock
 {
-    public required Guid Id { get; set; }
-    public required string Region { get; set; } // Partition Key
-    public bool IsLocked { get; set; }
+    public static string IdFormat(Guid id) => string.Format("Lock_{0}", id);
+
+    public required string Id { get; set; }
+    public required Guid JobId { get; set; } // Partition Key
     public required string LockedByWorkerId { get; set; }
     public DateTimeOffset? LockedAt { get; set; }
 
-    // Concurrency Token for Quorum OCC
-    public string? _etag { get; set; }
+    public int TimeToLive { get; set; } = 86400; // 24 hours in seconds    
 }

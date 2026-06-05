@@ -9,26 +9,23 @@ public class JobLockDbContext(DbContextOptions<JobLockDbContext> options) : DbCo
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<JobLock>()
-            .ToContainer("JobSnapshots")
-            .HasPartitionKey(l => l.Region)
+        var jobLock = modelBuilder.Entity<JobLock>();
+
+        jobLock.ToContainer("JobSnapshots")
+            .HasPartitionKey(l => l.JobId)
             .HasNoDiscriminator()
-            .UseETagConcurrency()  // Crucial for UC 2.1 Locking
             .HasKey(l => l.Id);
 
-        modelBuilder.Entity<JobLock>()
-            .Property(l => l.Id).HasConversion<string>();
+        jobLock.Property(l => l.Id)
+            .ToJsonProperty("id");
 
-        modelBuilder.Entity<JobLock>()
-            .Property(l => l.Id).ToJsonProperty("id");
+        jobLock.Property(l => l.JobId)
+            .ToJsonProperty("job_id");
 
-        modelBuilder.Entity<JobLock>()
-            .Property(l => l.Region).ToJsonProperty("region");
+        jobLock.Property(j => j.LockedAt)
+            .ToJsonProperty("locked_at");
 
-        modelBuilder.Entity<JobLock>()
-            .Property(j => j.IsLocked).ToJsonProperty("is_locked");
-
-        modelBuilder.Entity<JobLock>()
-            .Property(j => j.LockedAt).ToJsonProperty("locked_at");
+        jobLock.Property(e => e.TimeToLive)
+            .ToJsonProperty("ttl");
     }
 }

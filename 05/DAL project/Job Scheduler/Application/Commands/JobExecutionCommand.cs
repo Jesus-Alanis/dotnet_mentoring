@@ -5,8 +5,8 @@ using System.Data;
 
 namespace Application.Commands;
 
-public record StartJobExecutionCommand(Guid JobId, string WorkerNodeId);
-public record CompleteJobExecutionCommand(Guid JobExecutionId, JobExecutionStatus FinalStatus);
+public record StartJobExecutionCommand(Guid JobId, DateTimeOffset ScheduledTime, string WorkerNodeId);
+public record CompleteJobExecutionCommand(Guid JobExecutionId, DateTimeOffset ScheduledTime, JobExecutionStatus FinalStatus, string? ErrorMessage = null);
 
 public class JobExecutionCommandHandler(JobSqlDbContext sqlDbContext)
 {
@@ -18,6 +18,7 @@ public class JobExecutionCommandHandler(JobSqlDbContext sqlDbContext)
             JobId = request.JobId,
             WorkerNodeId = request.WorkerNodeId,
             Status = JobExecutionStatus.Running,
+            ScheduledTime = request.ScheduledTime,
             StartedAt = DateTimeOffset.UtcNow
         };
 
@@ -35,12 +36,15 @@ public class JobExecutionCommandHandler(JobSqlDbContext sqlDbContext)
 
     public async Task HandleCompletionAsync(CompleteJobExecutionCommand request, CancellationToken ct)
     {
-        var execution = await sqlDbContext.JobExecutions.FindAsync([request.JobExecutionId], ct);
+        var execution = await sqlDbContext.JobExecutions.FindAsync([request.JobExecutionId, request.ScheduledTime], ct);
 
         if (execution != null)
         {
             execution.Status = request.FinalStatus;
             execution.EndedAt = DateTimeOffset.UtcNow;
+
+            if(!string.IsNullOrEmpty(request.ErrorMessage))
+                execution.ErrorMessage = request.ErrorMessage;
 
             using var transaction = await sqlDbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
 

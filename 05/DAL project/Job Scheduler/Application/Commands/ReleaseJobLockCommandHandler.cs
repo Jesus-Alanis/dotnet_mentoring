@@ -1,9 +1,10 @@
-﻿using Infrastructure.Data;
+﻿using Domain.Entities;
+using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace Application.Commands;
 
-public record ReleaseJobLockCommand(Guid JobId, string Region);
+public record ReleaseJobLockCommand(Guid JobId);
 
 public class ReleaseJobLockCommandHandler(JobLockDbContext cosmosDbContext)
 {
@@ -11,11 +12,18 @@ public class ReleaseJobLockCommandHandler(JobLockDbContext cosmosDbContext)
     {     
         try
         {
-            var deleted = await cosmosDbContext.JobLocks
-                .WithPartitionKey(request.Region)
-                .Where(l => l.Id == request.JobId)
-                .ExecuteDeleteAsync(ct);
-            return deleted > 0;
+            var jobLock = await cosmosDbContext.JobLocks
+                .WithPartitionKey(request.JobId)
+                .Where(l => l.Id == JobLock.IdFormat(request.JobId))
+                .FirstOrDefaultAsync(ct);
+
+            if (jobLock == null)
+                return true;
+
+            cosmosDbContext.JobLocks.Remove(jobLock);
+            await cosmosDbContext.SaveChangesAsync();
+
+            return true;
         }
         catch (Exception)
         {

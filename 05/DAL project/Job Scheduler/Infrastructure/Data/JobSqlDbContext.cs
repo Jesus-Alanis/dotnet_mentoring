@@ -10,43 +10,59 @@ public class JobSqlDbContext(DbContextOptions<JobSqlDbContext> options) : DbCont
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<JobExecution>()
-            .ToTable("JobExecution").HasKey(j => j.Id);
+        var jobExecution = modelBuilder.Entity<JobExecution>();
 
-        modelBuilder.Entity<JobExecution>()
-            .Property(j => j.JobId).HasColumnName("job_id");
+        jobExecution.ToTable("JobExecution").HasKey(j => new { j.Id, j.ScheduledTime });
 
-        modelBuilder.Entity<JobExecution>()
-            .Property(j => j.StartedAt).HasColumnName("started_at");
+        jobExecution.Property(j => j.JobId)
+            .HasColumnName("job_id");
 
-        modelBuilder.Entity<JobExecution>()
-            .Property(j => j.EndedAt).HasColumnName("ended_at");
+        jobExecution.Property(j => j.ScheduledTime)
+            .HasColumnName("scheduled_time");
 
-        modelBuilder.Entity<JobExecution>()
-           .Property(j => j.Status).HasConversion<string>();
+        jobExecution.Property(j => j.StartedAt)
+            .HasColumnName("started_at");
 
-        modelBuilder.Entity<JobExecution>()
+        jobExecution.Property(j => j.EndedAt)
+            .HasColumnName("ended_at");
+
+        jobExecution.Property(j => j.Status)
+            .HasConversion<string>();
+
+        jobExecution.Property(j => j.ErrorMessage)
+            .HasColumnName("error_message");
+
+        jobExecution
             .HasOne(e => e.Job)
             .WithMany(j => j.Executions)
             .HasForeignKey(e => e.JobId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<JobExecution>()
-            .HasIndex(e => new { e.JobId, e.Status });
+        jobExecution.HasIndex(e => new { e.JobId, e.Status });
 
-        modelBuilder.Entity<JobRecord>()
-            .ToTable("Job").HasKey(j => j.Id);
 
-        modelBuilder.Entity<JobRecord>()
-            .Property(j => j.OwnerId).HasColumnName("user_id");
+        var jobRecord = modelBuilder.Entity<JobRecord>();
 
-        modelBuilder.Entity<JobRecord>()
-           .Property(j => j.CronExpression).HasColumnName("frequency");
+        jobRecord.ToTable("Job").HasKey(j => j.Id);
 
-        modelBuilder.Entity<JobRecord>()
-          .Property(j => j.CreatedAt).HasColumnName("created_at");
+        jobRecord.Property(j => j.OwnerId)
+            .HasColumnName("user_id");
 
-        modelBuilder.Entity<JobRecord>()
-           .Property(j => j.Status).HasConversion<string>();
+        jobRecord.Property(j => j.CronExpression)
+            .HasColumnName("frequency");
+
+        jobRecord.Property(j => j.IsRecurrent)
+            .HasColumnName("is_recurrent");
+
+        jobRecord.Property(j => j.ScheduledTime)
+            .HasColumnName("next_execution_at");
+
+        jobRecord.Property(j => j.CreatedAt)
+            .HasColumnName("created_at");
+
+        jobRecord.Property(j => j.Status)
+            .HasConversion<string>();
+
+        jobRecord.HasIndex(e => new { e.Id, e.Status });
     }
 }

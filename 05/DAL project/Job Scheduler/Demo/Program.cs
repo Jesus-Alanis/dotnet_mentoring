@@ -36,8 +36,10 @@ builder.Services.AddDbContext<JobLockDbContext>(options =>
 // Register CQRS Handlers
 builder.Services.AddScoped<CreateJobCommandHandler>();
 builder.Services.AddScoped<GetActiveJobsQueryHandler>();
+builder.Services.AddTransient<GetJobScheduledTimeQueryHandler>();
 builder.Services.AddTransient<AcquireJobLockCommandHandler>();
 builder.Services.AddTransient<ReleaseJobLockCommandHandler>();
+builder.Services.AddTransient<UpdateJobScheduledTimeCommandHandler>();
 builder.Services.AddTransient<JobExecutionCommandHandler>();
 builder.Services.AddTransient<JobExecutionOrchestrator>();
 
@@ -49,27 +51,26 @@ var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 var userId = Guid.NewGuid();
 var ct = new CancellationToken();
 
-var job1 = await CreateJobAsync("Important Job!");
-
-await RunJobAsync(job1);
+var jobId = await CreateJobAsync($"Job 100", isRecurrent: true);
+await RunJobAsync(jobId);
 
 await host.RunAsync();
 
 
 
 
-async Task<Guid> CreateJobAsync(string jobName)
+async Task<Guid> CreateJobAsync(string jobName, bool isRecurrent)
 {
     var createJobHandler = scope.ServiceProvider.GetRequiredService<CreateJobCommandHandler>();
 
-    var jobId = await createJobHandler.HandleAsync(new CreateJobCommand(userId, jobName, "*/5 * * * *", "{\"field_1\":\"field_value\"}"), ct);
+    var jobId = await createJobHandler.HandleAsync(new CreateJobCommand(userId, jobName, "0 16 */3 8 *", isRecurrent, "{\"field_1\":\"field_value\"}"), ct);
 
     var getActiveJobsHandler = scope.ServiceProvider.GetRequiredService<GetActiveJobsQueryHandler>();
 
     var jobs = await getActiveJobsHandler.HandleAsync(new GetActiveJobsQuery(userId), ct);
     foreach (var job in jobs)
     {
-        logger.LogInformation("Job Info - Id: {jobId}, User Id: {userId}, Job Name: {jobName}, Job Status: {jobStatus}", job.Id, job.OwnerId, job.Name, job.Status);
+        logger.LogInformation("Job Info - Id: {jobId}, Job Name: {jobName}, Job Status: {jobStatus}", job.Id, job.Name, job.Status);
     }
 
     return jobId;
@@ -77,8 +78,13 @@ async Task<Guid> CreateJobAsync(string jobName)
 
 async Task RunJobAsync(Guid jobId)
 {
-    var jobExecutionOrchestrator1 = scope.ServiceProvider.GetRequiredService<JobExecutionOrchestrator>();
-    var jobExecutionOrchestrator2 = scope.ServiceProvider.GetRequiredService<JobExecutionOrchestrator>();
+    // In theory, there should be a background worker scanning the Jobs table by looking up jobs scheduled time and invoking the job orchestrator.
+    var getJobScheduledTimeHandler = scope.ServiceProvider.GetRequiredService<GetJobScheduledTimeQueryHandler>();
 
-    await Task.WhenAll(jobExecutionOrchestrator1.ProcessJobAsync(jobId, "worker ID 1", "US", ct), jobExecutionOrchestrator2.ProcessJobAsync(jobId, "worker ID 2", "US", ct));
+    var jobScheduledTime = await getJobScheduledTimeHandler.HandleAsync(new GetJobScheduledTimeQuery(jobId), ct);
+
+    var jobExecutionOrchestrator1 = scope.ServiceProvider.GetRequiredService<JobExecutionOrchestrator>();
+    var jobExecutionOrchestrator2 = scope.ServiceProvider.GetRequiredService<JobExecutionOrchestrator>();   
+
+    await Task.WhenAll(jobExecutionOrchestrator1.ProcessJobAsync(jobId, jobScheduledTime, ct), jobExecutionOrchestrator2.ProcessJobAsync(jobId, jobScheduledTime, ct));
 }
