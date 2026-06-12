@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Infrastructure.Data.Migrations
 {
-    [DbContext(typeof(JobSqlDbContext))]
+    [DbContext(typeof(JobStoreDbContext))]
     partial class JobSqlDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
@@ -24,9 +24,6 @@ namespace Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Domain.Entities.JobExecution", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<DateTimeOffset>("ScheduledTime")
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("scheduled_time");
@@ -55,7 +52,7 @@ namespace Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("Id", "ScheduledTime");
+                    b.HasKey("JobId", "ScheduledTime");
 
                     b.HasIndex("JobId", "Status");
 

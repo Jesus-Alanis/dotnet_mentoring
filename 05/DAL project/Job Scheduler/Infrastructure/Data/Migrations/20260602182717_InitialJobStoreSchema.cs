@@ -32,7 +32,6 @@ namespace Infrastructure.Data.Migrations
                 name: "JobExecution",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     job_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     WorkerNodeId = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Status = table.Column<string>(type: "nvarchar(450)", nullable: false),
@@ -41,7 +40,7 @@ namespace Infrastructure.Data.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_JobExecution", x => x.Id);
+                    table.PrimaryKey("PK_JobExecution", x => x.job_id);
                     table.ForeignKey(
                         name: "FK_JobExecution_Job_job_id",
                         column: x => x.job_id,

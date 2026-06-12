@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Infrastructure.Data.Migrations
 {
-    [DbContext(typeof(JobSqlDbContext))]
+    [DbContext(typeof(JobStoreDbContext))]
     [Migration("20260605202538_AddPartitionSetup")]
     partial class AddPartitionSetup
     {

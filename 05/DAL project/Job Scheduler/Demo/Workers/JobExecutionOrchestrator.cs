@@ -7,7 +7,8 @@ namespace Demo.Workers;
 public class JobExecutionOrchestrator(
     AcquireJobLockCommandHandler lockHandler,
     ReleaseJobLockCommandHandler releaseHandler,
-    JobExecutionCommandHandler executionHandler,
+    StartJobExecutionCommandHandler executionHandler,
+    CompleteJobExecutionCommandHandler completeHandler,
     UpdateJobScheduledTimeCommandHandler updateJobHandler,
     ILogger<JobExecutionOrchestrator> logger)
 {
@@ -18,7 +19,7 @@ public class JobExecutionOrchestrator(
     {
         // Acquire Lock in Cosmos DB (Optimistic Concurrency Control)
         var lockCommand = new AcquireJobLockCommand(JobId, WorkerId);
-        bool hasLock = await lockHandler.HandleAsync(lockCommand, ct);
+        bool hasLock = await lockHandler.Handle(lockCommand, ct);
 
         if (!hasLock)
         {
@@ -27,28 +28,27 @@ public class JobExecutionOrchestrator(
         }
 
         logger.LogInformation("Worker ID: {workerId} - Job: {JobId} running.", WorkerId, JobId);
-        var startCommand = new StartJobExecutionCommand(JobId, JobScheduledTime, WorkerId);
-        var jobExecutionId = await executionHandler.HandleStartAsync(startCommand, ct);
+        await executionHandler.Handle(new StartJobExecutionCommand(JobId, JobScheduledTime, WorkerId), ct);
 
         try
         {          
             await PerformHeavyWorkloadAsync(ct);
 
-            await executionHandler.HandleCompletionAsync(
-                new CompleteJobExecutionCommand(jobExecutionId, JobScheduledTime, JobExecutionStatus.Completed), ct);
+            await completeHandler.Handle(
+                new CompleteJobExecutionCommand(JobId, JobScheduledTime, JobExecutionStatus.Completed), ct);
             logger.LogInformation("Worker ID: {workerId} - Job: {JobId} completed.", WorkerId, JobId);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Worker ID: {workerId} - Job: {JobId} failed.", WorkerId, JobId);
 
-            await executionHandler.HandleCompletionAsync(
-                new CompleteJobExecutionCommand(jobExecutionId, JobScheduledTime, JobExecutionStatus.Failed, ex.Message), ct);
+            await completeHandler.Handle(
+                new CompleteJobExecutionCommand(JobId, JobScheduledTime, JobExecutionStatus.Failed, ex.Message), ct);
         }
         finally
         {
-            await updateJobHandler.HandleAsync(new UpdateJobScheduledTimeCommand(JobId), ct);
-            await releaseHandler.HandleAsync(new ReleaseJobLockCommand(JobId), ct);
+            await updateJobHandler.Handle(new UpdateJobScheduledTimeCommand(JobId), ct);
+            await releaseHandler.Handle(new ReleaseJobLockCommand(JobId), ct);
         }       
     }
 

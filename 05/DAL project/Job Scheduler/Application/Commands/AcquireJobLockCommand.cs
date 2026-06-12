@@ -1,44 +1,24 @@
 ﻿using Domain.Entities;
-using Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
+using Infrastructure.Data.Repositories;
+using MediatR;
 
 namespace Application.Commands;
 
-public record AcquireJobLockCommand(Guid JobId, string WorkerId);
+public record AcquireJobLockCommand(Guid JobId, string WorkerId) : IRequest<bool>;
 
-public class AcquireJobLockCommandHandler(JobLockDbContext cosmosDbContext)
+public class AcquireJobLockCommandHandler(IJobLockRepository lockRepository) 
+    : IRequestHandler<AcquireJobLockCommand, bool>
 {
-    public async Task<bool> HandleAsync(AcquireJobLockCommand request, CancellationToken ct)
+    public async Task<bool> Handle(AcquireJobLockCommand request, CancellationToken ct)
     {
-        // Read the lock document (Strong Consistency Quorum Read)
-        var lockDoc = await cosmosDbContext.JobLocks
-            .WithPartitionKey(request.JobId)
-            .FirstOrDefaultAsync(l => l.Id == JobLock.IdFormat(request.JobId), ct);
-
-        if (lockDoc is not null)
+        var jobLock = new JobLock
         {
-            return false;
-        }
+            Id = JobLock.IdFormat(request.JobId),
+            JobId = request.JobId,
+            LockedByWorkerId = request.WorkerId,
+            LockedAt = DateTimeOffset.UtcNow
+        };
 
-        try
-        {
-            lockDoc = new JobLock
-            {
-                Id = JobLock.IdFormat(request.JobId),
-                JobId = request.JobId,
-                LockedByWorkerId = request.WorkerId,
-                LockedAt = DateTimeOffset.UtcNow
-            };
-
-            cosmosDbContext.JobLocks.Add(lockDoc);
-            await cosmosDbContext.SaveChangesAsync(ct);
-
-            return true;
-        }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("Conflict") == true)
-        {
-            //If document is new, Cosmos DB strictly enforces Unique ID constraints within a partition, rejecting consecutive inserts for the same lock.
-            return false;
-        }
+        return await lockRepository.TryAcquireJobLockAsync(jobLock, ct);
     }
 }

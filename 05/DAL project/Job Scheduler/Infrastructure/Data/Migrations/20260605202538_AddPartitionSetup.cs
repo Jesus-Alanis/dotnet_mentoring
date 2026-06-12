@@ -52,7 +52,7 @@ namespace Infrastructure.Data.Migrations
             migrationBuilder.AddPrimaryKey(
                 name: "PK_JobExecution",
                 table: "JobExecution",
-                columns: new[] { "Id", "scheduled_time" });
+                columns: new[] { "job_id", "scheduled_time" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Job_Id_Status",
@@ -70,7 +70,7 @@ namespace Infrastructure.Data.Migrations
             ");
 
             // Bind the table to the scheme
-            migrationBuilder.Sql("CREATE UNIQUE CLUSTERED INDEX PK_JobExecution ON JobExecution(Id, scheduled_time) WITH (DROP_EXISTING = ON) ON ps_JobScheduledTime(scheduled_time);");
+            migrationBuilder.Sql("CREATE UNIQUE CLUSTERED INDEX PK_JobExecution ON JobExecution(job_id, scheduled_time) WITH (DROP_EXISTING = ON) ON ps_JobScheduledTime(scheduled_time);");
         }
 
         /// <inheritdoc />

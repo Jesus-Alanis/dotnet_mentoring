@@ -3,22 +3,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Data;
 
-public class JobReadDbContext(DbContextOptions<JobReadDbContext> options) : DbContext(options)
+public class JobStoreDbContext(DbContextOptions<JobStoreDbContext> options) : DbContext(options)
 {
     public DbSet<JobRecord> Jobs => Set<JobRecord>();
     public DbSet<JobExecution> JobExecutions => Set<JobExecution>();
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        // Enforce No-Tracking globally for the read replica to boost performance
-        optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var jobExecution = modelBuilder.Entity<JobExecution>();
 
-        jobExecution.ToTable("JobExecution").HasKey(j => new { j.Id, j.ScheduledTime });
+        jobExecution.ToTable("JobExecution").HasKey(j => new { j.JobId, j.ScheduledTime });
 
         jobExecution.Property(j => j.JobId)
             .HasColumnName("job_id");

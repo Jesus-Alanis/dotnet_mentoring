@@ -8,6 +8,5 @@ public class JobLock
     public required Guid JobId { get; set; } // Partition Key
     public required string LockedByWorkerId { get; set; }
     public DateTimeOffset? LockedAt { get; set; }
-
     public int TimeToLive { get; set; } = 86400; // 24 hours in seconds    
 }
